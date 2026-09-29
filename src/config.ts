@@ -24,6 +24,8 @@ export interface LanguageOverride {
 
 export interface PolyglotLspConfig {
 	languages: Record<string, LanguageOverride>;
+	/** edit/write 后自动追加 LSP 诊断，默认 true */
+	autoDiagnostics?: boolean;
 }
 
 export class PolyglotConfigError extends Error {
@@ -67,7 +69,12 @@ export function parse_config(raw: unknown, path: string): PolyglotLspConfig {
 	for (const [name, value] of Object.entries(languages)) {
 		result[name] = parse_override(value, `languages.${name}`, path);
 	}
-	return { languages: result };
+	if (raw.autoDiagnostics !== undefined && typeof raw.autoDiagnostics !== 'boolean') {
+		throw new PolyglotConfigError(path, '"autoDiagnostics" must be a boolean');
+	}
+	return raw.autoDiagnostics === undefined
+		? { languages: result }
+		: { languages: result, autoDiagnostics: raw.autoDiagnostics };
 }
 
 function parse_override(value: unknown, at: string, path: string): LanguageOverride {

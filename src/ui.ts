@@ -28,8 +28,7 @@ type AnyTool = ToolDefinition<any, any, any>;
  * 包装 ExtensionAPI：对经由它注册的 LSP 工具追加紧凑渲染与底栏状态，
  * 不改变工具参数、执行逻辑和返回给模型的内容。
  */
-export function with_lsp_ui(pi: ExtensionAPI, manager: LspServerManager): ExtensionAPI {
-	const status = new LspStatus(manager);
+export function with_lsp_ui(pi: ExtensionAPI, status: LspStatus): ExtensionAPI {
 	pi.on('session_start', async (_event, ctx) => status.idle(ctx));
 	return new Proxy(pi, {
 		get(target, prop, receiver) {

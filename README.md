@@ -43,6 +43,21 @@ pi -e npm:pi-polyglot-lsp
 
 扩展会注入一段简短系统提示，提醒模型在改完代码后用 LSP 诊断校验。
 
+### 编辑后自动诊断
+
+`edit` / `write` 成功修改受支持文件、且对应语言服务器已在运行时，自动在工具结果末尾追加一行，模型无需再单独调用 `lsp_diagnostics`（省一轮上下文重放）：
+
+```text
+LSP diagnostics (auto): no errors
+LSP diagnostics (auto): 2 errors, 1 warning
+  12:5 undefined: foo
+  30:9 cannot use x (variable of type int) as string value
+```
+
+- 预算：无问题一行；只列 error，至多 5 条，超出只给数量；warning 只计数；最多等待 1.5 秒
+- 语言服务器尚未启动时不等待、不追加，只在后台预热，之后的编辑才带诊断
+- 关闭：`polyglot-lsp.json` 中设置 `"autoDiagnostics": false`
+
 ### 界面提示
 
 交互 TUI 中每次 LSP 调用显示为两行，默认折叠，展开可看完整输出（只影响显示，模型拿到的内容不变）：
@@ -86,6 +101,7 @@ LSP diagnostics src/main/java/com/trade/common/ApiResponse.java
 
 | 字段 | 说明 |
 |---|---|
+| `autoDiagnostics`（顶层） | `false` 关闭编辑后自动诊断，默认开启 |
 | `enabled` | `false` 禁用该语言 |
 | `command` / `args` | 覆盖启动命令与参数；新增语言时 `command` 与 `extensions` 必填 |
 | `extensions` | 该语言处理的扩展名，需以 `.` 开头 |

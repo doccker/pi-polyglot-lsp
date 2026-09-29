@@ -8,8 +8,13 @@ import {
 	LspServerManager,
 	type CreateLspServerManagerOptions,
 } from './server-manager.js';
+import {
+	AUTO_DIAGNOSTICS_PROMPT,
+	auto_diagnostics_enabled,
+	register_auto_diagnostics,
+} from './auto-diagnostics.js';
 import { register_lsp_tools } from './tools.js';
-import { with_lsp_ui } from './ui.js';
+import { LspStatus, with_lsp_ui } from './ui.js';
 
 export { should_inject_lsp_prompt } from './prompt.js';
 export type { LspClientLike } from './server-manager.js';
@@ -22,12 +27,17 @@ export function create_lsp_extension(
 	return async function lsp(pi: ExtensionAPI) {
 		const manager = new LspServerManager(options);
 
-		register_lsp_tools(with_lsp_ui(pi, manager), manager);
+		const status = new LspStatus(manager);
+		register_lsp_tools(with_lsp_ui(pi, status), manager);
+		register_auto_diagnostics(pi, manager, status);
 
 		pi.on('before_agent_start', async (event) => {
 			if (!should_inject_lsp_prompt(event)) return {};
+			const prompt = append_lsp_system_prompt(event.systemPrompt);
 			return {
-				systemPrompt: append_lsp_system_prompt(event.systemPrompt),
+				systemPrompt: auto_diagnostics_enabled()
+					? prompt + AUTO_DIAGNOSTICS_PROMPT
+					: prompt,
 			};
 		});
 

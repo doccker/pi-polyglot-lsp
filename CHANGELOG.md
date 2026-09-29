@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- 编辑后自动诊断：`edit` / `write` 修改受支持文件后，若该语言服务器已运行，自动追加一行 `LSP diagnostics (auto): …`（至多 5 条 error，warning 只计数），不额外占用模型轮次；服务器未运行时仅后台预热，不等待
+- 新增配置 `autoDiagnostics`（默认 `true`）
+- 修复：`didClose` 后迟到的 `publishDiagnostics` 被写入缓存，导致重新打开文件时返回上一版过期诊断（影响显式 `lsp_diagnostics` 与自动诊断）
+
 ## 0.1.2
 
 - 底栏常驻空闲标识 `○ LSP`：插件加载即显示，调用时切换为 starting / 执行中，完成提示停留 5 秒后回到空闲

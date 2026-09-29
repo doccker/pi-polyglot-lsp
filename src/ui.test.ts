@@ -157,7 +157,7 @@ describe('LspStatus and decorate_tool', () => {
 
 	it('shows the idle marker on session start', async () => {
 		const on = vi.fn();
-		with_lsp_ui({ registerTool: vi.fn(), on } as unknown as ExtensionAPI, fake_manager());
+		with_lsp_ui({ registerTool: vi.fn(), on } as unknown as ExtensionAPI, new LspStatus(fake_manager()));
 		expect(on).toHaveBeenCalledWith('session_start', expect.any(Function));
 		const { ctx, set_status } = fake_ctx();
 		await on.mock.calls[0][1]({}, ctx);
@@ -167,7 +167,7 @@ describe('LspStatus and decorate_tool', () => {
 	it('only decorates registerTool and forwards other API calls', () => {
 		const register = vi.fn();
 		const on = vi.fn();
-		const api = with_lsp_ui({ registerTool: register, on } as unknown as ExtensionAPI, fake_manager());
+		const api = with_lsp_ui({ registerTool: register, on } as unknown as ExtensionAPI, new LspStatus(fake_manager()));
 		api.on('session_shutdown', vi.fn());
 		api.registerTool({ name: 'lsp_hover', execute: vi.fn() } as never);
 		expect(on).toHaveBeenCalledTimes(2);
