@@ -2,3 +2,5 @@ node_modules/
 dist/
 coverage/
 *.tgz
+
+AGENTS.override.md
