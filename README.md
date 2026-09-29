@@ -1,189 +1,109 @@
-# @spences10/pi-lsp
+# pi-polyglot-lsp
 
-<!-- package-readme:header:start -->
+给 [Pi](https://pi.dev) 编码助手提供 LSP 工具：诊断、hover、跳转定义、查找引用、文档符号。面向 Go / Rust / Java / TypeScript / Vue 多语言项目，语言服务器可配置。
 
-[![built with Vite+](https://img.shields.io/badge/built%20with-Vite+-646CFF?logo=vite&logoColor=white)](https://viteplus.dev)
-[![tested with Vitest](https://img.shields.io/badge/tested%20with-Vitest-6E9F18?logo=vitest&logoColor=white)](https://vitest.dev)
-[![npm version](https://img.shields.io/npm/v/@spences10/pi-lsp?color=CB3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/@spences10/pi-lsp)
-[![license](https://img.shields.io/npm/l/@spences10/pi-lsp)](https://www.npmjs.com/package/@spences10/pi-lsp)
+fork 自 [@spences10/pi-lsp](https://github.com/spences10/my-pi/tree/main/packages/pi-lsp)（MIT），在其基础上增加：
 
-![my-pi package preview](https://raw.githubusercontent.com/spences10/my-pi/main/assets/pi-package-preview.png)
+- **可配置语言服务器**：用户级 `~/.pi/agent/polyglot-lsp.json` 覆盖命令/参数/扩展名，禁用或新增语言
+- **Vue SFC**：`typescript-language-server` + `@vue/typescript-plugin`，支持 `.vue` 的诊断、定义、引用
+- **Java + Lombok**：项目声明 Lombok 时自动给 `jdtls` 注入 `-javaagent`，消除 `builder() undefined` 类误报
 
-<!-- package-readme:header:end -->
-
-Give agents precise code intelligence instead of guesswork. `pi-lsp`
-exposes language-server diagnostics, hovers, definitions, references,
-and symbols as Pi tools so models can validate edits and navigate
-typed codebases accurately.
-
-The hover, definition, and document-symbol tools prefer Pi's strict
-JSON Schema sampling with closed, fully required schemas. LSP tools
-with optional arguments use normal tool calling for provider
-portability.
-
-## Installation
-
-<!-- package-readme:install:start -->
+## 安装
 
 ```bash
-pi install npm:@spences10/pi-lsp
+pi install npm:pi-polyglot-lsp
+# 或 git 源
+pi install git:github.com/doccker/pi-polyglot-lsp@v0.1.0
+# 单次试用
+pi -e npm:pi-polyglot-lsp
 ```
 
-<!-- package-readme:install:end -->
+语言服务器需自行安装并在 `PATH` 上：
 
-Local development from this monorepo:
+| 语言 | 服务器 | 安装 |
+|---|---|---|
+| Go | `gopls` | `go install golang.org/x/tools/gopls@latest` |
+| Rust | `rust-analyzer` | `rustup component add rust-analyzer`（仅有 rustup 代理不够） |
+| Java | `jdtls` | `brew install jdtls` 或 Eclipse JDT LS 发行包 |
+| TS / JS | `typescript-language-server` | `npm i -g typescript typescript-language-server` |
+| Vue | 上面的 TS 服务器 + `@vue/typescript-plugin` | `npm i -g @vue/language-server`（自带插件）或项目内安装插件 |
+| Python / Ruby / Lua / Svelte | 同上游 | 见上游说明 |
 
-```bash
-pnpm --filter @spences10/pi-lsp run build
-pi install ./packages/pi-lsp
-# or for one run only
-pi -e ./packages/pi-lsp
-```
+项目内 TypeScript 7（无 `lib/tsserver.js`）时会改用原生 `tsc --lsp --stdio`；原生 LSP 不支持 tsserver 插件，此时 `.vue` 不可用。
 
-## Required language servers
+## 工具与命令
 
-This package talks to language-server binaries installed globally on
-`PATH` or locally in a project. Global installation makes one server
-available across projects:
-
-```bash
-npm install -g typescript svelte-language-server
-# or
-pnpm add -g typescript svelte-language-server
-```
-
-Project-local development dependencies let a repository pin and share
-specific server versions:
-
-```bash
-npm install -D typescript svelte-language-server
-# or
-pnpm add -D typescript svelte-language-server
-```
-
-For TypeScript 6 and earlier, add `typescript-language-server` to the
-same global or project-local command. Volta users can install global
-tools with `volta install typescript svelte-language-server`.
-
-Supported server discovery includes:
-
-- TypeScript 7 / JavaScript via the project-local native
-  `tsc --lsp --stdio` server
-- TypeScript 6 and earlier via `typescript-language-server --stdio`
-- Svelte via `svelteserver`
-- Python via `python-lsp-server`
-- Go via `gopls`
-- Rust via `rust-analyzer`
-- Ruby via `solargraph`
-- Java via `jdtls`
-- Lua via `lua-language-server`
-
-The TypeScript backend is selected by capability. A project-local
-TypeScript installation takes priority. TypeScript 7 without
-`lib/tsserver.js` uses its native `tsc` LSP, while classic project
-installations use `typescript-language-server`. When a project does
-not pin TypeScript, a TypeScript 7 `tsc` on `PATH` provides the native
-LSP. `/lsp status` reports the selected backend and full command. A
-TypeScript 7 native server that cannot start reports a specific setup
-hint.
-
-Project-local binaries in `node_modules/.bin` are detected before
-global binaries, but are untrusted by default because they can execute
-repo-controlled code. Interactive sessions prompt before starting a
-project-local binary; headless sessions fall back to the global `PATH`
-binary unless `MY_PI_LSP_PROJECT_BINARY=allow` or
-`MY_PI_LSP_PROJECT_BINARY=trust` is set. `/lsp status` shows the
-resolved binary path for running and idle servers.
-
-An allow-once decision remains valid for the lifetime of the Pi
-session, including after an idle language-server restart. Interactive
-trust prompts follow tool cancellation and time out after 30 seconds,
-returning a tool error instead of leaving the session indefinitely in
-`Working`.
-
-Language servers receive a restricted child-process environment by
-default. Use `MY_PI_LSP_ENV_ALLOWLIST=NAME,OTHER_NAME` or the shared
-`MY_PI_CHILD_ENV_ALLOWLIST` to pass selected ambient variables
-through.
-
-## Tools
-
-The extension registers LSP-backed Pi tools for:
-
-- diagnostics
-- hover
-- definitions
-- references
-- document symbols
-
-These tools let the model inspect types, find usages, and catch
-diagnostics without guessing from text search alone.
-
-## Model reminder
-
-When LSP tools are active, the extension injects a small system prompt
-reminder telling the model to use LSP for focused diagnostics, type
-and symbol questions, definitions, references, and validation before
-reporting completion. It also reminds the model to run diagnostics on
-changed language-server-supported files before completion or commit,
-preferring `lsp_diagnostics_many` for batches.
-
-## Commands
+工具：`lsp_diagnostics`、`lsp_diagnostics_many`、`lsp_find_symbol`、`lsp_hover`、`lsp_definition`、`lsp_references`、`lsp_document_symbols`。
 
 ```text
-/lsp status
+/lsp status          查看服务器、后端与完整命令
 /lsp list
-/lsp restart all
-/lsp restart <language>
+/lsp restart all | <language>
 ```
 
-Use `/lsp status` to inspect active clients and `/lsp restart` after
-dependency installs or language-server crashes.
+扩展会注入一段简短系统提示，提醒模型在改完代码后用 LSP 诊断校验。
 
-Language servers stop after five minutes without an active LSP request
-and start again on demand. Set `MY_PI_LSP_IDLE_TIMEOUT_MS` to a
-positive timeout in milliseconds, or set it to `0` to keep idle
-servers running until the Pi session exits.
+## 配置
 
-## Using from a custom harness
+`~/.pi/agent/polyglot-lsp.json`（可用 `PI_CODING_AGENT_DIR` 改变目录），不存在时使用内置默认值；格式错误会在工具调用时直接报错，不静默回退。
 
-```ts
-import lsp from '@spences10/pi-lsp';
-
-// pass `lsp` as an ExtensionFactory to your Pi runtime
+```json
+{
+	"languages": {
+		"java": { "lombok": "auto" },
+		"typescript": { "vuePlugin": "auto" },
+		"ruby": { "enabled": false },
+		"kotlin": {
+			"command": "kotlin-language-server",
+			"extensions": [".kt", ".kts"],
+			"installHint": "brew install kotlin-language-server"
+		}
+	}
+}
 ```
 
-For harnesses that need to provide their own language-server client
-factory, use the named extension factory:
+| 字段 | 说明 |
+|---|---|
+| `enabled` | `false` 禁用该语言 |
+| `command` / `args` | 覆盖启动命令与参数；新增语言时 `command` 与 `extensions` 必填 |
+| `extensions` | 该语言处理的扩展名，需以 `.` 开头 |
+| `languageIds` | 扩展名 → LSP `languageId`，如 `{ ".vue": "vue" }` |
+| `installHint` | 启动失败时展示的安装提示 |
+| `lombok`（java） | `auto`（默认）/ `off` / jar 绝对路径 |
+| `vuePlugin`（typescript） | `auto`（默认）/ `off` / 插件目录绝对路径 |
 
-```ts
-import { create_lsp_extension } from '@spences10/pi-lsp';
+**安全边界**：只读取用户级配置，不读取项目级配置，仓库无法借此声明任意可执行命令。`node_modules/.bin` 下的项目内服务器二进制默认不受信任，交互会话会弹确认，无界面会话回退到 `PATH` 上的全局二进制（`MY_PI_LSP_PROJECT_BINARY=allow|trust` 可放行）。
 
-const lsp = create_lsp_extension({ create_client });
-```
+### 自动探测规则
 
-The package also exports `CreateLspExtensionOptions`,
-`should_inject_lsp_prompt`, and `LspClientLike` for custom harnesses
-and tests that need to share the same prompt-gating or client seam.
+- **Lombok**：`auto` 时，从 workspace 向上（到 `.git` 为止）查找 `pom.xml` / `build.gradle(.kts)`，任一包含 `lombok` 即启用；jar 取 `~/.m2` 与 `~/.gradle` 缓存中的最高版本；只对命令名为 `jdtls` 的启动脚本注入 `--jvm-arg=-javaagent:<jar>`，自定义命令请自行写入 `args`。
+- **Vue**：`auto` 时，从 workspace 向上查找声明了 `vue` 依赖的 `package.json`；插件依次查找项目 `node_modules/@vue/typescript-plugin`、`PATH` 上 `vue-language-server` 所属全局包内的插件。Vue 项目找不到插件时，`.vue` 文件返回明确错误和安装提示，`.ts` 文件不受影响。
 
-`my-pi` imports this package directly and enables it as the built-in
-LSP extension.
+## 环境变量
 
-## Development
+| 变量 | 说明 |
+|---|---|
+| `MY_PI_LSP_PROJECT_BINARY` | `allow` / `trust`：无界面会话放行项目内服务器二进制 |
+| `MY_PI_LSP_ENV_ALLOWLIST` | 逗号分隔，额外透传给语言服务器的环境变量（默认受限环境） |
+| `MY_PI_LSP_IDLE_TIMEOUT_MS` | 空闲停止超时，默认 5 分钟，`0` 表示不停止 |
 
-<!-- package-readme:development:start commands="check,test,build" -->
+变量名沿用上游，便于从 `@spences10/pi-lsp` 迁移。
 
-Package scripts build transitive workspace dependencies first, then
-run local tools through Vite+ with `vp exec`.
+## 已知限制
+
+- Vue SFC 的 `lsp_document_symbols` 返回空（TS 插件不提供 SFC 符号），用 `lsp_find_symbol` 或读文件代替
+- `rust-analyzer` / `jdtls` 首次建索引期间可能返回 `-32801 content modified`，重试即可
+- 不要与 `@spences10/pi-lsp` 同时启用，两者注册同名工具
+
+## 开发
 
 ```bash
-pnpm --filter @spences10/pi-lsp run check
-pnpm --filter @spences10/pi-lsp run test
-pnpm --filter @spences10/pi-lsp run build
+npm install
+npm run check   # tsc --noEmit
+npm test        # vitest
+pi -e .         # 本地加载试用
 ```
-
-<!-- package-readme:development:end -->
 
 ## License
 
-MIT
+MIT，见 [LICENSE](./LICENSE) 与 [NOTICE](./NOTICE)。

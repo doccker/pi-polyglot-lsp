@@ -15,7 +15,7 @@ export const LSP_SYSTEM_PROMPT = `
 ## Language server support via LSP tools
 
 You have access to Language Server Protocol tools for diagnostics, hover/type information, definitions, references, and document symbols. Use them when:
-- Debugging TypeScript, JavaScript, Svelte, or other language-server-supported errors
+- Debugging Go, Rust, Java, TypeScript/JavaScript, Vue, or other language-server-supported errors
 - Checking types, symbol definitions, or API documentation from code
 - Finding references more precisely than text search
 - Validating focused code changes before reporting completion

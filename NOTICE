@@ -1,0 +1,12 @@
+pi-polyglot-lsp
+Copyright (c) 2026 wwj
+
+本项目 fork 自 @spences10/pi-lsp（MIT License，Copyright (c) 2026 Scott Spence）：
+  https://github.com/spences10/my-pi/tree/main/packages/pi-lsp
+  基线提交：spences10/my-pi@fbee2bf6ad88e2a542ab7ebe4ebf029d3927f4ac
+
+主要改动：
+  - 语言服务器表可通过用户级 ~/.pi/agent/polyglot-lsp.json 覆盖、禁用或新增
+  - Vue 单文件组件：typescript-language-server + @vue/typescript-plugin
+  - Java：检测到 Lombok 时自动为 jdtls 注入 -javaagent
+  - 独立构建与测试（vitest），直接发布 TypeScript 源码

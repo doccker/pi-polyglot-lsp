@@ -29,6 +29,7 @@ import {
 	default_lsp_trust_store_path,
 	is_lsp_binary_trusted,
 } from './trust.js';
+import { VUE_INSTALL_HINT, vue_support_error } from './vue-plugin.js';
 
 const LSP_PROJECT_BINARY_ENV = 'MY_PI_LSP_PROJECT_BINARY';
 export const DEFAULT_LSP_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
@@ -342,6 +343,17 @@ export class LspServerManager {
 		const language = detect_language(file_path);
 		if (!language) return undefined;
 		const workspace_root = find_workspace_root(file_path, this.cwd);
+		const vue_error = vue_support_error(file_path, workspace_root);
+		if (vue_error) {
+			throw new LspToolError({
+				kind: 'server_start_failed',
+				file: file_path,
+				language,
+				workspace_root,
+				install_hint: VUE_INSTALL_HINT,
+				message: vue_error,
+			});
+		}
 		const key = `${language}\u0000${workspace_root}`;
 		const existing = this.clients_by_server.get(key);
 		if (existing) return existing;
@@ -379,6 +391,7 @@ export class LspServerManager {
 				args: server_config.args,
 				root_uri,
 				language_id_for_uri: (uri) => language_id_for_file(uri),
+				initialization_options: server_config.initialization_options,
 			});
 
 			try {

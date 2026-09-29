@@ -8,91 +8,12 @@ import {
 	resolve,
 } from 'node:path';
 
-export interface LspServerConfig {
-	language: string;
-	command: string;
-	args: string[];
-	backend?: string;
-	install_hint?: string;
-	is_project_local?: boolean;
-}
+import type { PolyglotLspConfig } from './config.js';
+import { lombok_args } from './java-lombok.js';
+import { get_registry, type LspServerConfig } from './registry.js';
+import { vue_initialization_options } from './vue-plugin.js';
 
-const EXTENSION_LANGUAGES: Record<string, string> = {
-	'.ts': 'typescript',
-	'.tsx': 'typescript',
-	'.mts': 'typescript',
-	'.cts': 'typescript',
-	'.js': 'typescript',
-	'.jsx': 'typescript',
-	'.mjs': 'typescript',
-	'.cjs': 'typescript',
-	'.py': 'python',
-	'.rs': 'rust',
-	'.go': 'go',
-	'.rb': 'ruby',
-	'.java': 'java',
-	'.lua': 'lua',
-	'.svelte': 'svelte',
-};
-
-const LANGUAGE_SERVERS: Record<string, LspServerConfig> = {
-	typescript: {
-		language: 'typescript',
-		command: 'typescript-language-server',
-		args: ['--stdio'],
-		backend: 'typescript-language-server',
-		install_hint:
-			'Install TypeScript LSP with: pnpm add -D typescript typescript-language-server',
-	},
-	python: {
-		language: 'python',
-		command: 'pylsp',
-		args: [],
-		install_hint:
-			'Install Python LSP with: pip install python-lsp-server',
-	},
-	rust: {
-		language: 'rust',
-		command: 'rust-analyzer',
-		args: [],
-		install_hint:
-			'Install Rust Analyzer and ensure the rust-analyzer binary is on PATH.',
-	},
-	go: {
-		language: 'go',
-		command: 'gopls',
-		args: ['serve'],
-		install_hint:
-			'Install Go LSP with: go install golang.org/x/tools/gopls@latest',
-	},
-	ruby: {
-		language: 'ruby',
-		command: 'solargraph',
-		args: ['stdio'],
-		install_hint: 'Install Ruby LSP with: gem install solargraph',
-	},
-	java: {
-		language: 'java',
-		command: 'jdtls',
-		args: [],
-		install_hint:
-			'Install Eclipse JDT Language Server and ensure the jdtls binary is on PATH.',
-	},
-	lua: {
-		language: 'lua',
-		command: 'lua-language-server',
-		args: [],
-		install_hint:
-			'Install Lua LSP and ensure the lua-language-server binary is on PATH.',
-	},
-	svelte: {
-		language: 'svelte',
-		command: 'svelteserver',
-		args: ['--stdio'],
-		install_hint:
-			'Install Svelte LSP with: pnpm add -D svelte-language-server (or volta install svelte-language-server)',
-	},
-};
+export type { LspServerConfig } from './registry.js';
 
 const WORKSPACE_MARKERS = [
 	'svelte.config.js',
@@ -121,11 +42,13 @@ const REPOSITORY_MARKERS = [
 export function detect_language(
 	file_path: string,
 ): string | undefined {
-	return EXTENSION_LANGUAGES[extname(file_path).toLowerCase()];
+	return get_registry().extension_languages[
+		extname(file_path).toLowerCase()
+	];
 }
 
 export function list_supported_languages(): string[] {
-	return Object.keys(LANGUAGE_SERVERS).sort();
+	return Object.keys(get_registry().servers).sort();
 }
 
 export interface ResolvedServerCommand {
@@ -168,10 +91,44 @@ export function get_server_config(
 	cwd: string = process.cwd(),
 	options: {
 		global_typescript_major?: () => number | undefined;
+		config?: PolyglotLspConfig;
+		home_dir?: string;
+		path_env?: string;
 	} = {},
 ): LspServerConfig | undefined {
-	const base = LANGUAGE_SERVERS[language];
+	const registry = get_registry(options.config);
+	const base = registry.servers[language];
 	if (!base) return undefined;
+	const override = registry.overrides[language];
+	const config = resolve_base_server_config(base, language, cwd, options);
+	if (language === 'java') {
+		const extra = lombok_args(config.command, cwd, {
+			setting: override?.lombok,
+			home_dir: options.home_dir,
+		});
+		return extra.length
+			? { ...config, args: [...config.args, ...extra] }
+			: config;
+	}
+	if (language === 'typescript') {
+		const initialization_options = vue_initialization_options(
+			cwd,
+			config.backend,
+			{ setting: override?.vuePlugin, path_env: options.path_env },
+		);
+		return initialization_options
+			? { ...config, initialization_options }
+			: config;
+	}
+	return config;
+}
+
+function resolve_base_server_config(
+	base: LspServerConfig,
+	language: string,
+	cwd: string,
+	options: { global_typescript_major?: () => number | undefined },
+): LspServerConfig {
 	if (language === 'typescript') {
 		const native = resolve_native_typescript_server(cwd);
 		if (native) return native;
@@ -203,7 +160,8 @@ export function get_server_config(
 export function language_id_for_file(
 	file_path: string,
 ): string | undefined {
-	return detect_language(file_path);
+	const ext = extname(file_path).toLowerCase();
+	return get_registry().language_ids[ext] ?? detect_language(file_path);
 }
 
 export function find_workspace_root(

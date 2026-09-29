@@ -72,6 +72,7 @@ export interface LspClientOptions {
 	root_uri: string;
 	language_id_for_uri: (uri: string) => string | undefined;
 	request_timeout_ms?: number;
+	initialization_options?: unknown;
 }
 
 export class LspClientStartError extends Error {
@@ -211,6 +212,12 @@ export class LspClient extends EventEmitter {
 							symbol: {},
 						},
 					},
+					...(this.#options.initialization_options !== undefined
+						? {
+								initializationOptions:
+									this.#options.initialization_options,
+							}
+						: {}),
 					workspaceFolders: [
 						{ uri: this.#options.root_uri, name: 'workspace' },
 					],
