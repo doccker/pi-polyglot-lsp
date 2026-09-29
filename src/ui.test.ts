@@ -9,7 +9,7 @@ import {
 } from './format.js';
 import { summarize_call, summarize_result } from './render-summary.js';
 import type { LspServerManager } from './server-manager.js';
-import { decorate_tool, DONE_LINGER_MS, LspStatus, with_lsp_ui } from './ui.js';
+import { decorate_tool, DONE_LINGER_MS, IDLE_TEXT, LspStatus, with_lsp_ui } from './ui.js';
 
 const loc = (line: number) => ({
 	uri: 'file:///repo/a.go',
@@ -95,7 +95,7 @@ describe('LspStatus and decorate_tool', () => {
 		return { ctx, set_status };
 	}
 
-	it('shows starting for cold servers and clears after completion', async () => {
+	it('shows starting for cold servers and returns to idle after completion', async () => {
 		const status = new LspStatus(fake_manager());
 		const { ctx, set_status } = fake_ctx();
 		let during: unknown;
@@ -115,7 +115,7 @@ describe('LspStatus and decorate_tool', () => {
 			expect(during).toEqual(['lsp', '◌ LSP starting gopls…']);
 			expect(set_status.mock.calls.at(-1)).toEqual(['lsp', '✓ LSP gopls · references']);
 			vi.advanceTimersByTime(DONE_LINGER_MS);
-			expect(set_status.mock.calls.at(-1)).toEqual(['lsp', undefined]);
+			expect(set_status.mock.calls.at(-1)).toEqual(['lsp', IDLE_TEXT]);
 		} finally {
 			vi.useRealTimers();
 		}
@@ -155,13 +155,22 @@ describe('LspStatus and decorate_tool', () => {
 		expect(set_status).not.toHaveBeenCalled();
 	});
 
+	it('shows the idle marker on session start', async () => {
+		const on = vi.fn();
+		with_lsp_ui({ registerTool: vi.fn(), on } as unknown as ExtensionAPI, fake_manager());
+		expect(on).toHaveBeenCalledWith('session_start', expect.any(Function));
+		const { ctx, set_status } = fake_ctx();
+		await on.mock.calls[0][1]({}, ctx);
+		expect(set_status).toHaveBeenCalledWith('lsp', IDLE_TEXT);
+	});
+
 	it('only decorates registerTool and forwards other API calls', () => {
 		const register = vi.fn();
 		const on = vi.fn();
 		const api = with_lsp_ui({ registerTool: register, on } as unknown as ExtensionAPI, fake_manager());
 		api.on('session_shutdown', vi.fn());
 		api.registerTool({ name: 'lsp_hover', execute: vi.fn() } as never);
-		expect(on).toHaveBeenCalledOnce();
+		expect(on).toHaveBeenCalledTimes(2);
 		expect(register.mock.calls[0][0]).toHaveProperty('renderCall');
 		expect(register.mock.calls[0][0]).toHaveProperty('renderResult');
 	});

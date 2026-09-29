@@ -1,6 +1,6 @@
 {
 	"name": "pi-polyglot-lsp",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Configurable LSP tools for Pi agents: Go, Rust, Java (Lombok-aware), TypeScript and Vue diagnostics, hovers, definitions, references and symbols",
 	"keywords": [
 		"language-server",

@@ -58,9 +58,10 @@ LSP diagnostics src/main/java/com/trade/common/ApiResponse.java
 
 | 阶段 | 显示 |
 |---|---|
+| 已加载、无调用（服务器按需启动） | `○ LSP` |
 | 语言服务器冷启动 | `◌ LSP starting rust-analyzer…` |
 | 执行中 | `● LSP gopls · references`，并发时追加 `(+N)` |
-| 结束后 5 秒 | `✓ LSP gopls · references` |
+| 结束后 5 秒，之后回到 `○ LSP` | `✓ LSP gopls · references` |
 
 使用 `@zgltyq/pi-provider-claude` 等会把工具名改写为 `mcp__pi__*` 的 provider 时，对话区工具块按改写后的名字匹配不到自定义渲染，会退回 pi 默认样式（工具名 + JSON 参数）；底栏状态不受影响。
 

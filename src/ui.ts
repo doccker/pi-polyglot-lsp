@@ -19,6 +19,8 @@ const STATUS_KEY = 'lsp';
 const MAX_EXPANDED_LINES = 40;
 /** 调用结束后完成提示在底栏停留的时长；极快的调用（几十毫秒）否则来不及被看到 */
 export const DONE_LINGER_MS = 5_000;
+/** 空闲标识：插件已加载、当前无 LSP 调用（语言服务器按需启动） */
+export const IDLE_TEXT = '○ LSP';
 
 type AnyTool = ToolDefinition<any, any, any>;
 
@@ -28,6 +30,7 @@ type AnyTool = ToolDefinition<any, any, any>;
  */
 export function with_lsp_ui(pi: ExtensionAPI, manager: LspServerManager): ExtensionAPI {
 	const status = new LspStatus(manager);
+	pi.on('session_start', async (_event, ctx) => status.idle(ctx));
 	return new Proxy(pi, {
 		get(target, prop, receiver) {
 			if (prop === 'registerTool') {
@@ -87,7 +90,7 @@ interface ActiveCall {
 
 /**
  * 底栏状态：冷启动显示 starting，执行中显示 server · action；
- * 全部结束后保留完成提示 DONE_LINGER_MS 再清除。
+ * 全部结束后保留完成提示 DONE_LINGER_MS，再回到空闲标识。
  */
 export class LspStatus {
 	readonly #manager: LspServerManager;
@@ -127,12 +130,19 @@ export class LspStatus {
 		this.#render(ctx);
 	}
 
-	/** 当前状态文本（不含颜色），供测试与渲染使用；无内容时为 undefined。 */
-	text(): { tone: 'warning' | 'accent' | 'muted'; text: string } | undefined {
+	/** 会话开始时显示空闲标识。 */
+	idle(ctx?: ExtensionContext): void {
+		this.#render(ctx);
+	}
+
+	/** 当前状态文本（不含颜色），供测试与渲染使用。 */
+	text(): { tone: 'warning' | 'accent' | 'muted'; text: string } {
 		const calls = [...this.#active.values()];
 		const latest = calls.at(-1);
 		if (!latest) {
-			return this.#done ? { tone: 'muted', text: `✓ LSP ${this.#done.server} · ${this.#done.action}` } : undefined;
+			return this.#done
+				? { tone: 'muted', text: `✓ LSP ${this.#done.server} · ${this.#done.action}` }
+				: { tone: 'muted', text: IDLE_TEXT };
 		}
 		const more = calls.length > 1 ? ` (+${calls.length - 1})` : '';
 		return latest.starting
@@ -153,7 +163,7 @@ export class LspStatus {
 	#render(ctx?: ExtensionContext): void {
 		if (!ctx?.hasUI) return;
 		const current = this.text();
-		ctx.ui.setStatus(STATUS_KEY, current ? ctx.ui.theme.fg(current.tone, current.text) : undefined);
+		ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg(current.tone, current.text));
 	}
 }
 
