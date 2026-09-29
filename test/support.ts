@@ -115,6 +115,12 @@ export function create_command_context(
 				notify(message: string, level?: string) {
 					notifications.push({ message, level });
 				},
+				// 与真实 ExtensionUIContext 对齐：hasUI 为 true 时 theme 与 setStatus 恒存在
+				theme: {
+					fg: (_color: string, text: string) => text,
+					bold: (text: string) => text,
+				},
+				setStatus: vi.fn(),
 				select,
 				custom: modal_results.length
 					? vi.fn(async (create_component: Function) => {

@@ -9,6 +9,7 @@ import {
 	type CreateLspServerManagerOptions,
 } from './server-manager.js';
 import { register_lsp_tools } from './tools.js';
+import { with_lsp_ui } from './ui.js';
 
 export { should_inject_lsp_prompt } from './prompt.js';
 export type { LspClientLike } from './server-manager.js';
@@ -21,7 +22,7 @@ export function create_lsp_extension(
 	return async function lsp(pi: ExtensionAPI) {
 		const manager = new LspServerManager(options);
 
-		register_lsp_tools(pi, manager);
+		register_lsp_tools(with_lsp_ui(pi, manager), manager);
 
 		pi.on('before_agent_start', async (event) => {
 			if (!should_inject_lsp_prompt(event)) return {};

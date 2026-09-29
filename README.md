@@ -43,6 +43,27 @@ pi -e npm:pi-polyglot-lsp
 
 扩展会注入一段简短系统提示，提醒模型在改完代码后用 LSP 诊断校验。
 
+### 界面提示
+
+交互 TUI 中每次 LSP 调用显示为两行，默认折叠，展开可看完整输出（只影响显示，模型拿到的内容不变）：
+
+```text
+LSP references crates/waf-rules/src/validate.rs:16:11
+✓ 15 references
+LSP diagnostics src/main/java/com/trade/common/ApiResponse.java
+⚠ 3 diagnostics (2 errors)
+```
+
+底栏（需 footer 显示扩展状态，如 `pi-open-tui` 的 `extensionStatuses: true`）：
+
+| 阶段 | 显示 |
+|---|---|
+| 语言服务器冷启动 | `◌ LSP starting rust-analyzer…` |
+| 执行中 | `● LSP gopls · references`，并发时追加 `(+N)` |
+| 结束后 5 秒 | `✓ LSP gopls · references` |
+
+使用 `@zgltyq/pi-provider-claude` 等会把工具名改写为 `mcp__pi__*` 的 provider 时，对话区工具块按改写后的名字匹配不到自定义渲染，会退回 pi 默认样式（工具名 + JSON 参数）；底栏状态不受影响。
+
 ## 配置
 
 `~/.pi/agent/polyglot-lsp.json`（可用 `PI_CODING_AGENT_DIR` 改变目录），不存在时使用内置默认值；格式错误会在工具调用时直接报错，不静默回退。
@@ -92,7 +113,7 @@ pi -e npm:pi-polyglot-lsp
 ## 已知限制
 
 - Vue SFC 的 `lsp_document_symbols` 返回空（TS 插件不提供 SFC 符号），用 `lsp_find_symbol` 或读文件代替
-- `rust-analyzer` / `jdtls` 首次建索引期间可能返回 `-32801 content modified`，重试即可
+- `rust-analyzer` / `jdtls` 首次建索引期间可能返回 `-32801 content modified` 或空结果（no hover info / no references），稍后重试即可
 - 不要与 `@spences10/pi-lsp` 同时启用，两者注册同名工具
 
 ## 开发
