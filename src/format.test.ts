@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it } from 'vitest';
 import type { LspDocumentSymbol } from './client.js';
 import {
 	find_symbol_matches,

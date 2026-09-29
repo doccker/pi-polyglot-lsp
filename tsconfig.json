@@ -6,6 +6,7 @@
 		"strict": true,
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
+		// 仅屏蔽第三方 .d.ts 问题（pi-ai JSON import、genai 缺 MCP 类型、chai/vitest 重复声明），本仓库源码仍全量检查
 		"skipLibCheck": true,
 		"types": ["node", "vitest/globals"]
 	},

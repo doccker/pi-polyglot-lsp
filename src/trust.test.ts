@@ -6,7 +6,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
 	default_lsp_trust_store_path,
 	is_lsp_binary_trusted,
