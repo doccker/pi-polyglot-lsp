@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
 	LspClient,
@@ -108,5 +109,32 @@ describe('normalize_document_symbol_result', () => {
 				},
 			},
 		]);
+	});
+});
+
+describe('LspClient diagnostics freshness', () => {
+	const server = fileURLToPath(new URL('../test/fake-push-server.mjs', import.meta.url));
+	const uri = 'file:///repo/main.go';
+	const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+	it('ignores pushes that arrive after didClose when the document is reopened', async () => {
+		const client = new LspClient({
+			command: process.execPath,
+			args: [server],
+			root_uri: 'file:///repo',
+			language_id_for_uri: () => 'go',
+		});
+		await client.start();
+		try {
+			// 打开后立即关闭：服务器对 clean 版本的推送会在关闭之后迟到
+			await client.ensure_document_open(uri, 'clean');
+			await client.close_document(uri);
+			await sleep(150);
+			await client.ensure_document_open(uri, 'BAD');
+			const diagnostics = await client.wait_for_diagnostics(uri, 1000);
+			expect(diagnostics.map((d) => d.message)).toEqual(['bad']);
+		} finally {
+			await client.stop();
+		}
 	});
 });

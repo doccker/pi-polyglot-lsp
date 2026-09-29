@@ -265,6 +265,8 @@ export class LspClient extends EventEmitter {
 
 		const language_id =
 			this.#options.language_id_for_uri(uri) ?? 'plaintext';
+		// 关闭期间可能残留迟到的推送，重新打开时必须等本次的新结果
+		this.#diagnostics_by_uri.delete(uri);
 		this.#open_docs.set(uri, { version: 1, text });
 		this.#notify('textDocument/didOpen', {
 			textDocument: {
@@ -525,8 +527,19 @@ export class LspClient extends EventEmitter {
 		) {
 			const params = message.params as {
 				uri: string;
+				version?: number;
 				diagnostics: LspDiagnostic[];
 			};
+			// 只接收仍打开文档的当前版本：didClose 之后迟到的推送、
+			// 或带旧 version 的推送会让下一次查询直接拿到过期结果
+			const open_doc = this.#open_docs.get(params.uri);
+			if (
+				!open_doc ||
+				(params.version !== undefined &&
+					params.version !== open_doc.version)
+			) {
+				return;
+			}
 			this.#diagnostics_by_uri.set(params.uri, params.diagnostics);
 			this.emit('diagnostics', params.uri);
 			return;
