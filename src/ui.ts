@@ -23,6 +23,16 @@ export const DONE_LINGER_MS = 5_000;
 export const IDLE_TEXT = '○ LSP';
 
 type AnyTool = ToolDefinition<any, any, any>;
+type ToolRenderers = Pick<AnyTool, 'renderCall' | 'renderResult'>;
+type ToolRendererResolver = (tool_name: string, next: () => ToolRenderers | undefined) => ToolRenderers | undefined;
+/** 本仓库锁定的 pi 类型尚无 registerToolRenderer，按新版 pi 的公开签名声明 */
+type RendererApi = { registerToolRenderer?: (resolver: ToolRendererResolver) => void };
+
+/**
+ * `@zgltyq/pi-provider-claude` 发请求时把扩展工具改名为 `mcp__pi__<名字>`，到 message_end 才改回；
+ * pi 在流式阶段就按改写后的名字解析渲染器，所以需要为别名额外提供渲染器。
+ */
+export const CLAUDE_ALIAS_PREFIX = 'mcp__pi__';
 
 /**
  * 包装 ExtensionAPI：对经由它注册的 LSP 工具追加紧凑渲染与底栏状态，
@@ -30,15 +40,32 @@ type AnyTool = ToolDefinition<any, any, any>;
  */
 export function with_lsp_ui(pi: ExtensionAPI, status: LspStatus): ExtensionAPI {
 	pi.on('session_start', async (_event, ctx) => status.idle(ctx));
+	const aliases = register_alias_renderers(pi);
 	return new Proxy(pi, {
 		get(target, prop, receiver) {
 			if (prop === 'registerTool') {
-				return (tool: AnyTool) => target.registerTool(decorate_tool(tool, status));
+				return (tool: AnyTool) => {
+					const decorated = decorate_tool(tool, status);
+					aliases?.set(`${CLAUDE_ALIAS_PREFIX}${tool.name}`, {
+						renderCall: decorated.renderCall,
+						renderResult: decorated.renderResult,
+					});
+					target.registerTool(decorated);
+				};
 			}
 			const value = Reflect.get(target, prop, receiver);
 			return typeof value === 'function' ? value.bind(target) : value;
 		},
 	});
+}
+
+/** 只注册一个 resolver，内部按别名查表；老版本 pi 没有该 API 时返回 undefined 并跳过。 */
+function register_alias_renderers(pi: ExtensionAPI): Map<string, ToolRenderers> | undefined {
+	const api = pi as unknown as RendererApi;
+	if (typeof api.registerToolRenderer !== 'function') return undefined;
+	const renderers = new Map<string, ToolRenderers>();
+	api.registerToolRenderer((tool_name, next) => renderers.get(tool_name) ?? next());
+	return renderers;
 }
 
 export function decorate_tool(tool: AnyTool, status: LspStatus): AnyTool {

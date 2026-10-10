@@ -78,7 +78,7 @@ LSP diagnostics src/main/java/com/trade/common/ApiResponse.java
 | 执行中 | `● LSP gopls · references`，并发时追加 `(+N)` |
 | 结束后 5 秒，之后回到 `○ LSP` | `✓ LSP gopls · references` |
 
-使用 `@zgltyq/pi-provider-claude` 等会把工具名改写为 `mcp__pi__*` 的 provider 时，对话区工具块按改写后的名字匹配不到自定义渲染，会退回 pi 默认样式（工具名 + JSON 参数）；底栏状态不受影响。
+`@zgltyq/pi-provider-claude` 等会把工具名改写为 `mcp__pi__*` 的 provider 已适配，对话区照常显示紧凑渲染（需 pi 支持 `registerToolRenderer`，老版本 pi 下退回默认样式）；底栏状态不受影响。
 
 ## 配置
 

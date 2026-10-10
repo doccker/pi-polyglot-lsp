@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- 适配把工具名改写为 `mcp__pi__*` 的 provider（如 `@zgltyq/pi-provider-claude`）：通过 `registerToolRenderer` 为别名提供紧凑渲染，对话区不再退回默认样式；pi 不支持该 API 时静默跳过
+
 ## 0.1.3
 
 - 编辑后自动诊断：`edit` / `write` 修改受支持文件后，若该语言服务器已运行，自动追加一行 `LSP diagnostics (auto): …`（至多 5 条 error，warning 只计数），不额外占用模型轮次；服务器未运行时仅后台预热，不等待

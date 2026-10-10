@@ -175,3 +175,46 @@ describe('LspStatus and decorate_tool', () => {
 		expect(register.mock.calls[0][0]).toHaveProperty('renderResult');
 	});
 });
+
+describe('claude alias renderers', () => {
+	const alias_manager = { clients_by_server: new Map() } as unknown as LspServerManager;
+
+	function setup() {
+		const register = vi.fn();
+		const register_renderer = vi.fn();
+		const api = with_lsp_ui(
+			{ registerTool: register, registerToolRenderer: register_renderer, on: vi.fn() } as unknown as ExtensionAPI,
+			new LspStatus(alias_manager),
+		);
+		api.registerTool({ name: 'lsp_hover', execute: vi.fn() } as never);
+		api.registerTool({ name: 'lsp_references', execute: vi.fn() } as never);
+		expect(register_renderer).toHaveBeenCalledTimes(1);
+		return { resolver: register_renderer.mock.calls[0][0], decorated: register.mock.calls[0][0] };
+	}
+
+	it('serves decorated renderers for mcp__pi__ aliases', () => {
+		const { resolver, decorated } = setup();
+		const next = vi.fn();
+		const renderers = resolver('mcp__pi__lsp_hover', next);
+		expect(renderers.renderCall).toBe(decorated.renderCall);
+		expect(renderers.renderResult).toBe(decorated.renderResult);
+		expect(next).not.toHaveBeenCalled();
+	});
+
+	it('defers other tool names to next()', () => {
+		const { resolver } = setup();
+		const fallback = { renderCall: vi.fn() };
+		for (const name of ['lsp_hover', 'mcp__other__x']) {
+			const next = vi.fn(() => fallback);
+			expect(resolver(name, next)).toBe(fallback);
+			expect(next).toHaveBeenCalledTimes(1);
+		}
+	});
+
+	it('skips alias rendering when pi lacks registerToolRenderer', () => {
+		const register = vi.fn();
+		const api = with_lsp_ui({ registerTool: register, on: vi.fn() } as unknown as ExtensionAPI, new LspStatus(alias_manager));
+		expect(() => api.registerTool({ name: 'lsp_hover', execute: vi.fn() } as never)).not.toThrow();
+		expect(register).toHaveBeenCalledTimes(1);
+	});
+});
