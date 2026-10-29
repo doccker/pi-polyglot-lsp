@@ -1,7 +1,8 @@
 import { type ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { register_lsp_command } from './commands.js';
 import {
-	append_lsp_system_prompt,
+	build_lsp_section,
+	LSP_SECTION_NAME,
 	should_inject_lsp_prompt,
 } from './prompt.js';
 import {
@@ -33,12 +34,12 @@ export function create_lsp_extension(
 
 		pi.on('before_agent_start', async (event) => {
 			if (!should_inject_lsp_prompt(event)) return {};
-			const prompt = append_lsp_system_prompt(event.systemPrompt);
-			return {
-				systemPrompt: auto_diagnostics_enabled()
-					? prompt + AUTO_DIAGNOSTICS_PROMPT
-					: prompt,
-			};
+			// 不返回 systemPrompt：forced prompt 会击穿前缀缓存与 preserved thinking
+			event.systemPromptOptions.sections[LSP_SECTION_NAME] =
+				build_lsp_section(
+					auto_diagnostics_enabled() ? AUTO_DIAGNOSTICS_PROMPT : '',
+				);
+			return {};
 		});
 
 		register_lsp_command(pi, manager);

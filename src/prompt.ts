@@ -37,8 +37,9 @@ export function should_inject_lsp_prompt(event: {
 	);
 }
 
-export function append_lsp_system_prompt(
-	system_prompt: string,
-): string {
-	return system_prompt + LSP_SYSTEM_PROMPT;
+export const LSP_SECTION_NAME = 'lsp';
+
+/** 写入 systemPromptOptions.sections 的段落正文（pi 会渲染为 <lsp>…</lsp>） */
+export function build_lsp_section(extra_prompt = ''): string {
+	return (LSP_SYSTEM_PROMPT + extra_prompt).trim();
 }

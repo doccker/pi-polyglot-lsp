@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.1.5
+
+- 修复：系统提示注入由返回 `systemPrompt`（forced prompt）改为写入 `systemPromptOptions.sections.lsp`。forced prompt 会把所有 system 消息折叠成一条头部，AGENTS.md 或工具一变头部文本即变，击穿 Anthropic 前缀缓存并使会话内 preserved thinking 块全部失效；改走 section 后 pi 可按增量追加
 - 适配把工具名改写为 `mcp__pi__*` 的 provider（如 `@zgltyq/pi-provider-claude`）：通过 `registerToolRenderer` 为别名提供紧凑渲染，对话区不再退回默认样式；pi 不支持该 API 时静默跳过
 
 ## 0.1.3
